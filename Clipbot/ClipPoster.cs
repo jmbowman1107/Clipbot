@@ -107,7 +107,6 @@ namespace Clipbot
             } while (newClips != null && !string.IsNullOrWhiteSpace(newClips.Pagination.Cursor));
 
             _cachedClips.AddRange(currentClips.Where(a => _cachedClips.All(b => b.Id != a.Id)));
-
             return currentClips;
         }
         #endregion
@@ -117,8 +116,7 @@ namespace Clipbot
             if (_cachedClips.Any()) _appSettings.LastReceivedClipTime = _cachedClips.Max(a => DateTime.Parse(a.CreatedAt));
 
             var newClipsListTwo = _cachedClips.ToList();
-            foreach (var clip in newClipsListTwo.Where(clip =>
-                DateTime.Now.AddDays(-1).Subtract(DateTime.Parse(clip.CreatedAt)).Days > 0))
+            foreach (var clip in newClipsListTwo.Where(clip =>DateTime.Now.AddDays(-1).Subtract(DateTime.Parse(clip.CreatedAt)).Days > 0))
             {
                 _cachedClips.Remove(clip);
             }

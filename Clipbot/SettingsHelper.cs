@@ -6,6 +6,7 @@ namespace Clipbot
 {
     public static class SettingsHelpers
     {
+        #region AddOrUpdateAppSetting
         public static void AddOrUpdateAppSetting<T>(T value)
         {
             try
@@ -14,7 +15,7 @@ namespace Clipbot
                 foreach (var item in settingFiles)
                 {
                     var filePath = Path.Combine(AppContext.BaseDirectory, item);
-                    var output = Newtonsoft.Json.JsonConvert.SerializeObject(new { ApplicationSettings = value } , Newtonsoft.Json.Formatting.Indented);
+                    var output = Newtonsoft.Json.JsonConvert.SerializeObject(new { ApplicationSettings = value }, Newtonsoft.Json.Formatting.Indented);
                     File.WriteAllText(filePath, output);
                 }
             }
@@ -22,6 +23,7 @@ namespace Clipbot
             {
                 throw new Exception($"Error writing app settings | {ex.Message}", ex);
             }
-        }
+        } 
+        #endregion
     }
 }

@@ -9,7 +9,8 @@ namespace Clipbot
 {
     class Program
     {
-        static async Task Main(string[] args)
+        #region Main
+        private static async Task Main(string[] args)
         {
             var appSettings = ConfigureServices(out var serviceProvider);
             var clipPoster = serviceProvider.GetService<ClipPosterService>();
@@ -17,18 +18,21 @@ namespace Clipbot
             var tokenSource = new CancellationTokenSource();
             var token = tokenSource.Token;
 
-            //var backgroundTask = Task.Run(async () =>
-            while (!token.IsCancellationRequested)
+            var backgroundTask = Task.Run(async () =>
             {
-                await clipPoster.PostNewClips();
-                await Task.Delay(appSettings.ClipPollCycle * 1000, token);
-            }
-            //}, token);
+                while (!token.IsCancellationRequested)
+                {
+                    await clipPoster.PostNewClips();
+                    await Task.Delay(appSettings.ClipPollCycle * 1000, token);
+                }
+            }, token);
 
             Console.ReadKey();
             tokenSource.Cancel();
-        }
+        } 
+        #endregion
 
+        #region ConfigureServices
         private static ApplicationSettings ConfigureServices(out ServiceProvider serviceProvider)
         {
             IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json", true, true).Build();
@@ -40,15 +44,10 @@ namespace Clipbot
             });
             ILogger logger = loggerFactory.CreateLogger<Program>();
 
-            serviceCollection.AddLogging(l => l.AddConsole()).AddTransient(p => p.ResolveWith<ClipPosterService>(appSettings, logger));
+            serviceCollection.AddLogging(l => l.AddConsole()).AddTransient(p => ActivatorUtilities.CreateInstance<ClipPosterService>(p, appSettings, logger));
             serviceProvider = serviceCollection.BuildServiceProvider();
             return appSettings;
-        }
-    }
-
-    static class ServiceProviderExtensions
-    {
-        public static T ResolveWith<T>(this IServiceProvider provider, params object[] parameters) where T : class =>
-            ActivatorUtilities.CreateInstance<T>(provider, parameters);
+        } 
+        #endregion
     }
 }
