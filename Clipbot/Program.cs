@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 
 namespace Clipbot
 {
@@ -12,25 +11,11 @@ namespace Clipbot
     {
         static async Task Main(string[] args)
         {
-            IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json", true, true).Build();
-            var appSettings = config.GetSection("ApplicationSettings").Get<ApplicationSettings>();
-            var serviceCollection = new ServiceCollection();
-            using var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.SetMinimumLevel(LogLevel.Trace).AddConsole( );
-            });
-            ILogger logger = loggerFactory.CreateLogger<Program>();
-
-            serviceCollection.AddLogging(l => l.AddConsole()).AddTransient(p => p.ResolveWith<ClipPosterService>(appSettings, logger));
-            var serviceProvider = serviceCollection.BuildServiceProvider();
+            var appSettings = ConfigureServices(out var serviceProvider);
             var clipPoster = serviceProvider.GetService<ClipPosterService>();
-
 
             var tokenSource = new CancellationTokenSource();
             var token = tokenSource.Token;
-            //var clipPoster = new ClipPoster(appConfig, _logger);
-
-
 
             //var backgroundTask = Task.Run(async () =>
             while (!token.IsCancellationRequested)
@@ -42,15 +27,23 @@ namespace Clipbot
 
             Console.ReadKey();
             tokenSource.Cancel();
-
         }
 
-        private static void ConfigureServices(IServiceCollection services, ApplicationSettings appSettings)
+        private static ApplicationSettings ConfigureServices(out ServiceProvider serviceProvider)
         {
-            services.AddLogging(configure => configure.AddConsole()).AddSingleton(a => ActivatorUtilities.CreateInstance<ApplicationSettings>(a, appSettings));
+            IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json", true, true).Build();
+            var appSettings = config.GetSection("ApplicationSettings").Get<ApplicationSettings>();
+            var serviceCollection = new ServiceCollection();
+            using var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.SetMinimumLevel(appSettings.LogLevel).AddConsole();
+            });
+            ILogger logger = loggerFactory.CreateLogger<Program>();
+
+            serviceCollection.AddLogging(l => l.AddConsole()).AddTransient(p => p.ResolveWith<ClipPosterService>(appSettings, logger));
+            serviceProvider = serviceCollection.BuildServiceProvider();
+            return appSettings;
         }
-
-
     }
 
     static class ServiceProviderExtensions

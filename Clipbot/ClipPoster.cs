@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Discord.Webhook;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using TwitchLib.Api;
 using TwitchLib.Api.Helix.Models.Clips.GetClips;
 
@@ -24,6 +25,7 @@ namespace Clipbot
         {
             _appSettings = appSettings;
             _logger = logger;
+            _cachedClips = new List<Clip>();
             TwitchApi = new TwitchAPI();
             TwitchApi.Settings.ClientId = "5j1aae4x7qqx17shppz7tc2g9rd6fw";
             TwitchApi.Settings.Secret = "ubx843ckzgxlzwt1558wlicsf6yuir";
@@ -33,6 +35,16 @@ namespace Clipbot
         #region PostNewClips
         public async Task PostNewClips()
         {
+            if (string.IsNullOrWhiteSpace(_appSettings.BroadcasterId))
+            {
+                _logger.LogError("Broadcaster ID is not set, please set it in appsettings.json");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_appSettings.DiscordWebhookUrl))
+            {
+                _logger.LogError("Discord Webhook URL is not set, please set it in appsettings.json");
+                return;
+            }
             _logger.LogTrace("Getting new clips and posting them to discord.");
             if (_appSettings.LastPostedClips == null) _appSettings.LastPostedClips = new List<string>();
             await GetNewClipsAndPostToDiscord();
@@ -49,10 +61,19 @@ namespace Clipbot
                 {
                     try
                     {
-                        if (_appSettings.LastPostedClips.All(a => a != clip.Id)) await webHookClient.SendMessageAsync(text: clip.Url);
+                        if (_appSettings.LastPostedClips.All(a => a != clip.Id))
+                        {
+                            _logger.LogTrace($"Posting Clip {clip.Id} to Discord",JsonConvert.SerializeObject(clip));
+                            await webHookClient.SendMessageAsync(text: clip.Url);
+                        }
+                        else
+                        {
+                            _logger.LogTrace($"Clip {clip.Id} has already been posted, skipping this.");
+                        }
                     }
                     catch (Exception ex)
                     {
+                        _logger.LogError(ex, "Error Posting Clip to Discord", clip.Id);
                         // TODO: Log Exception
                     }
                 }
@@ -76,17 +97,16 @@ namespace Clipbot
                     {
                         newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId, first: 10, startedAt: _appSettings.LastReceivedClipTime);
                     }
+                    _logger.LogTrace(JsonConvert.SerializeObject(newClips.Clips));
+                    currentClips.AddRange(newClips.Clips);
                 }
                 catch (Exception ex)
                 {
-                    // TODO: Log Exception
+                    _logger.LogError(ex, "Error retrieving clips from Twitch.");
                 }
+            } while (newClips != null && !string.IsNullOrWhiteSpace(newClips.Pagination.Cursor));
 
-                // TODO: _logger.LogDebug(JsonConvert.SerializeObject(newClips.Clips));
-                currentClips.AddRange(newClips.Clips);
-            } while (!string.IsNullOrWhiteSpace(newClips.Pagination.Cursor));
-
-            _cachedClips.AddRange(currentClips);
+            _cachedClips.AddRange(currentClips.Where(a => _cachedClips.All(b => b.Id != a.Id)));
 
             return currentClips;
         }
