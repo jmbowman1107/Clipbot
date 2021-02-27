@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30907.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clipbot", "Clipbot\Clipbot.csproj", "{1636082E-B2E3-400D-A368-9C1CE9E89A71}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1636082E-B2E3-400D-A368-9C1CE9E89A71}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1636082E-B2E3-400D-A368-9C1CE9E89A71}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1636082E-B2E3-400D-A368-9C1CE9E89A71}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1636082E-B2E3-400D-A368-9C1CE9E89A71}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A05ECCD3-9B66-4899-BC5F-7DDB5C058FC3}
+	EndGlobalSection
+EndGlobal
