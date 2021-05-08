@@ -18,7 +18,7 @@ namespace ClipbotLambda
 {
     public class Function
     {
-        
+        #region FunctionHandler
         /// <summary>
         /// A simple function that takes a string and does a ToUpper
         /// </summary>
@@ -30,7 +30,8 @@ namespace ClipbotLambda
             var appSettings = ConfigureServices(out var serviceProvider);
             var clipPoster = serviceProvider.GetService<ClipPosterService>();
             await clipPoster.PostNewClips(true);
-        }
+        } 
+        #endregion
 
         #region ConfigureServices
         private static ApplicationSettings ConfigureServices(out ServiceProvider serviceProvider)
