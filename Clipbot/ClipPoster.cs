@@ -95,7 +95,10 @@ namespace Clipbot
                     }
                     else
                     {
-                        newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId, first: 10, startedAt: _appSettings.LastReceivedClipTime);
+                        DateTime? endedAt = null;
+                        if (_appSettings.LastReceivedClipTime != null) endedAt = DateTime.Now;
+                        _logger.LogTrace($"Sending message: Broadcaster: {_appSettings.BroadcasterId}, first {10}, startedAt: {_appSettings.LastReceivedClipTime}, endedAt: {endedAt}");
+                        newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId, first: 10, startedAt: _appSettings.LastReceivedClipTime, endedAt: endedAt);
                     }
                     _logger.LogTrace(JsonConvert.SerializeObject(newClips.Clips));
                     currentClips.AddRange(newClips.Clips);
