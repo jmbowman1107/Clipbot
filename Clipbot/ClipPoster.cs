@@ -33,7 +33,7 @@ namespace Clipbot
         #endregion
 
         #region PostNewClips
-        public async Task PostNewClips()
+        public async Task PostNewClips(bool useDynamoDbSettings = false)
         {
             if (string.IsNullOrWhiteSpace(_appSettings.BroadcasterId))
             {
@@ -48,7 +48,7 @@ namespace Clipbot
             _logger.LogTrace("Getting new clips and posting them to discord.");
             if (_appSettings.LastPostedClips == null) _appSettings.LastPostedClips = new List<string>();
             await GetNewClipsAndPostToDiscord();
-            UpdateApplicationSettings();
+            UpdateApplicationSettings(useDynamoDbSettings);
         } 
         #endregion
 
@@ -96,8 +96,8 @@ namespace Clipbot
                     else
                     {
                         DateTime? endedAt = null;
-                        if (_appSettings.LastReceivedClipTime != null) endedAt = DateTime.Now;
-                        _logger.LogTrace($"Sending message: Broadcaster: {_appSettings.BroadcasterId}, first {10}, startedAt: {_appSettings.LastReceivedClipTime}, endedAt: {endedAt}");
+                        if (_appSettings.LastReceivedClipTime != null) endedAt = DateTime.UtcNow;
+                        _logger.LogTrace($"Sending message: Broadcaster: {_appSettings.BroadcasterId}, first {10}, startedAt: {_appSettings.LastReceivedClipTime.Value.ToUniversalTime()} UTC, endedAt: {endedAt} UTC");
                         newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId, first: 10, startedAt: _appSettings.LastReceivedClipTime, endedAt: endedAt);
                     }
                     _logger.LogTrace(JsonConvert.SerializeObject(newClips.Clips));
@@ -114,12 +114,17 @@ namespace Clipbot
         }
         #endregion
         #region UpdateApplicationSettings
-        private void UpdateApplicationSettings()
+        private void UpdateApplicationSettings(bool useDynamoDbSettings)
         {
-            if (_cachedClips.Any()) _appSettings.LastReceivedClipTime = _cachedClips.Max(a => DateTime.Parse(a.CreatedAt));
+            if (_cachedClips.Any())
+            {
+                _appSettings.LastReceivedClipTime = _cachedClips.Max(a => DateTime.Parse(a.CreatedAt));
+                // Since we delete any cached clips older than 1 day, we need to make sure the last clip time is never older than 24 hours or else we post the same clip over and over
+                if (_appSettings.LastReceivedClipTime < DateTime.UtcNow.AddDays(-1)) _appSettings.LastReceivedClipTime = DateTime.UtcNow.AddDays(-1);
+            }
 
             var newClipsListTwo = _cachedClips.ToList();
-            foreach (var clip in newClipsListTwo.Where(clip =>DateTime.Now.AddDays(-1).Subtract(DateTime.Parse(clip.CreatedAt)).Days > 0))
+            foreach (var clip in newClipsListTwo.Where(clip =>DateTime.UtcNow.AddDays(-1).Subtract(DateTime.Parse(clip.CreatedAt)).Days > 0))
             {
                 _cachedClips.Remove(clip);
             }
@@ -127,7 +132,7 @@ namespace Clipbot
             _appSettings.LastPostedClips = new List<string>();
             _appSettings.LastPostedClips.AddRange(_cachedClips.Select(a => a.Id).ToList());
 
-            SettingsHelpers.AddOrUpdateAppSetting(_appSettings);
+            SettingsHelpers.AddOrUpdateAppSetting(_appSettings, _logger, useDynamoDbSettings);
         }
         #endregion
     }
