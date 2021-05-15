@@ -10,7 +10,7 @@ namespace Clipbot
     class Program
     {
         #region Main
-        private static async Task Main(string[] args)
+        private static void Main(string[] args)
         {
             var appSettings = ConfigureServices(out var serviceProvider);
             var clipPoster = serviceProvider.GetService<ClipPosterService>();

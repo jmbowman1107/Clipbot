@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Discord;
 using Discord.Webhook;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -120,7 +121,7 @@ namespace Clipbot
             {
                 _appSettings.LastReceivedClipTime = _cachedClips.Max(a => DateTime.Parse(a.CreatedAt));
                 // Since we delete any cached clips older than 1 day, we need to make sure the last clip time is never older than 24 hours or else we post the same clip over and over
-                if (_appSettings.LastReceivedClipTime < DateTime.UtcNow.AddDays(-1)) _appSettings.LastReceivedClipTime = DateTime.UtcNow.AddDays(-1);
+                if (_appSettings.LastReceivedClipTime < DateTime.UtcNow.AddMinutes(-30)) _appSettings.LastReceivedClipTime = DateTime.UtcNow.AddMinutes(-30);
             }
 
             var newClipsListTwo = _cachedClips.ToList();

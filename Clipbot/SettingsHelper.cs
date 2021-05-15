@@ -28,14 +28,18 @@ namespace Clipbot
                             Newtonsoft.Json.Formatting.Indented);
                         File.WriteAllText(filePath, output);
                     }
-
-                    UpdateSettingsInDynamoDb(value);
-                    logger.LogTrace($"Error saving config file", ex.ToString());
-                    throw new Exception($"Error writing app settings | {ex.Message}", ex);
                 }
                 else
                 {
-                    UpdateSettingsInDynamoDb(value);
+                    try
+                    {
+                        UpdateSettingsInDynamoDb(value);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogTrace($"Error saving config file", ex.ToString());
+                        throw new Exception($"Error writing app settings | {ex.Message}", ex);
+                    }
                 }
             }
 
