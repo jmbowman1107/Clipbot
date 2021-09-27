@@ -16,6 +16,7 @@ namespace Clipbot
         private ApplicationSettings _appSettings;
         private ILogger _logger;
         private List<Clip> _cachedClips;
+        private const int _clipPageSize = 10;
 
         #region TwitchApi
         public TwitchAPI TwitchApi { get; set; } 
@@ -90,16 +91,17 @@ namespace Clipbot
             {
                 try
                 {
-                    if (newClips != null && !string.IsNullOrWhiteSpace(newClips.Pagination.Cursor))
+                    if (newClips != null && !string.IsNullOrWhiteSpace(newClips.Pagination.Cursor) && newClips.Clips.Length >= _clipPageSize)
                     {
-                        newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId,first: 10, after: newClips.Pagination.Cursor);
+                        _logger.LogTrace($"Sending message: Broadcaster: {_appSettings.BroadcasterId}, first {_clipPageSize}, paginationCursor: {newClips.Pagination.Cursor}");
+                        newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId,first: _clipPageSize, after: newClips.Pagination.Cursor);
                     }
                     else
                     {
                         DateTime? endedAt = null;
                         if (_appSettings.LastReceivedClipTime != null) endedAt = DateTime.UtcNow;
-                        _logger.LogTrace($"Sending message: Broadcaster: {_appSettings.BroadcasterId}, first {10}, startedAt: {_appSettings.LastReceivedClipTime.Value.ToUniversalTime()} UTC, endedAt: {endedAt} UTC");
-                        newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId, first: 10, startedAt: _appSettings.LastReceivedClipTime, endedAt: endedAt);
+                        _logger.LogTrace($"Sending message: Broadcaster: {_appSettings.BroadcasterId}, first {_clipPageSize}, startedAt: {_appSettings.LastReceivedClipTime.Value.ToUniversalTime()} UTC, endedAt: {endedAt} UTC");
+                        newClips = await TwitchApi.Helix.Clips.GetClipsAsync(broadcasterId: _appSettings.BroadcasterId, first: _clipPageSize, startedAt: _appSettings.LastReceivedClipTime, endedAt: endedAt);
                     }
                     _logger.LogTrace(JsonConvert.SerializeObject(newClips.Clips));
                     currentClips.AddRange(newClips.Clips);
@@ -108,7 +110,8 @@ namespace Clipbot
                 {
                     _logger.LogError(ex, "Error retrieving clips from Twitch.");
                 }
-            } while (newClips != null && !string.IsNullOrWhiteSpace(newClips.Pagination.Cursor));
+                // TODO: For some reason this is ALWAYS returning a pagniation cursor.. which results in everything being posted, over and over, only do pagination if results are equal to _clipPageSize
+            } while (newClips != null && !string.IsNullOrWhiteSpace(newClips.Pagination.Cursor) && newClips.Clips.Length >= _clipPageSize); 
 
             _cachedClips.AddRange(currentClips.Where(a => _cachedClips.All(b => b.Id != a.Id)));
             return currentClips;
