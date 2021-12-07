@@ -48,7 +48,7 @@ namespace BanHateBot
         {
             HeistInProgress = true;
             LastHeistStart = DateTimeOffset.Now;
-            TwitchChatClient.SendMessage(_channelName, HeistSettings.OnFirstEntryMessage.Replace("#{user}#", startingUser));
+            TwitchChatClient.SendMessage(_channelName, HeistSettings.OnFirstEntryMessage.Replace("{user}", startingUser));
             Task.Run(async () =>
             {
                 await Task.Delay(HeistSettings.StartDelay * 1000);
@@ -63,7 +63,7 @@ namespace BanHateBot
             if (!HeistInProgress && LastHeistEnd.HasValue &&
                 LastHeistEnd.Value.AddSeconds(HeistSettings.Cooldown) > DateTimeOffset.Now)
             {
-                TwitchChatClient.SendMessage(_channelName, "Hey hey hey, cool it, if we heist too often, there is no way we can succeed. Please wait a try to start a heist again a little bit later.");
+                TwitchChatClient.SendMessage(_channelName, HeistSettings.WaitForCooldownMessage);
             }
             if (LastHeistStart == null || !HeistInProgress && LastHeistEnd.HasValue && LastHeistEnd.Value.AddSeconds(HeistSettings.Cooldown) <= DateTimeOffset.Now)
             {
@@ -113,26 +113,26 @@ namespace BanHateBot
         {
             if (HeistParticipants.Any(a => a.User.Username == user.Username))
             {
-                TwitchChatClient.SendMessage(_channelName, $"{user.Username}, you have already joined this heist.");
+                TwitchChatClient.SendMessage(_channelName, HeistSettings.UserAlreadyJoinedMessage.Replace("{user}", user.Username));
                 return false;
             }
             else
             {
                 if (points.HasValue && points.Value > user.Points)
                 {
-                    TwitchChatClient.SendMessage(_channelName, $"{user.Username}, you only have {user.Points} points to heist with, try to enter again.");
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserNotEnoughPointsMessage.Replace("{user}", user.Username).Replace("{points}", user.Points.ToString()));
                     return false;
                 }
 
                 if (points.HasValue && points.Value > HeistSettings.MaxAmount)
                 {
-                    TwitchChatClient.SendMessage(_channelName, $"{user.Username}, you can only heist up to {HeistSettings.MaxAmount} points, try to enter again.");
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserOverMaxPointsMessage.Replace("{user}", user.Username).Replace("{maxamount}", HeistSettings.MaxAmount.ToString()));
                     return false;
                 }
 
                 if (points.HasValue && points.Value < HeistSettings.MinEntries)
                 {
-                    TwitchChatClient.SendMessage(_channelName, $"{user.Username}, you must heist with at least {HeistSettings.MinEntries} points, try to enter again.");
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserUnderMinPointsMessage.Replace("{user}", user.Username).Replace("{minentries}", HeistSettings.MinEntries.ToString()));
                     return false;
                 }
 
@@ -167,7 +167,7 @@ namespace BanHateBot
 
                 if (HeistParticipants.Count > 0)
                 {
-                    TwitchChatClient.SendMessage(_channelName, $"Ahoy! @{user.Username} has joined the treasure hunt.");
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.OnEntryMessage.Replace("{user}", user.Username));
                 }
 
                 HeistParticipants.Add(participant);
