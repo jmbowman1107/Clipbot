@@ -136,7 +136,7 @@ namespace Clipbot
             _appSettings.LastPostedClips = new List<string>();
             _appSettings.LastPostedClips.AddRange(_cachedClips.Select(a => a.Id).ToList());
 
-            SettingsHelpers.AddOrUpdateAppSetting(_appSettings, _logger, useDynamoDbSettings);
+            SettingsHelpers.AddOrUpdateAppSetting(_appSettings.BroadcasterId, _appSettings, _logger, useDynamoDbSettings);
         }
         #endregion
     }

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Amazon.Lambda.Core;
 using Clipbot;
+using Microsoft.Extensions.FileSystemGlobbing.Internal;
 using Newtonsoft.Json;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
@@ -28,8 +29,11 @@ namespace ClipbotLambda
         public async Task FunctionHandler(ILambdaContext context)
         {
             var appSettings = ConfigureServices(out var serviceProvider);
-            var clipPoster = serviceProvider.GetService<ClipPosterService>();
-            await clipPoster.PostNewClips(true);
+            var clipPosters = serviceProvider.GetServices<ClipPosterService>();
+            foreach (var clipPoster in clipPosters)
+            {
+                await clipPoster.PostNewClips(true);
+            }
         } 
         #endregion
 
@@ -42,7 +46,8 @@ namespace ClipbotLambda
                 dynamoDbConfig.RegionEndpoint = RegionEndpoint.USEast1;
 
                 var client = new AmazonDynamoDBClient(dynamoDbConfig);
-                var settings = client.GetItemAsync("ClipbotSettings", new Dictionary<string, AttributeValue> {{"BroadcasterID", new AttributeValue("75230612")}}).Result;
+                var allSettings = client.ScanAsync(new ScanRequest { TableName = "ClipbotSettings" }).Result;
+                var settings = client.GetItemAsync("ClipbotSettings", new Dictionary<string, AttributeValue> { { "BroadcasterID", new AttributeValue("75230612") } }).Result;
 
                 ApplicationSettings appSettings;
                 if (settings.Item.Count == 0)
@@ -60,8 +65,12 @@ namespace ClipbotLambda
                     builder.SetMinimumLevel(appSettings.LogLevel).AddConsole();
                 });
                 ILogger logger = loggerFactory.CreateLogger<Function>();
-
-                serviceCollection.AddLogging(l => l.AddConsole()).AddTransient(p => ActivatorUtilities.CreateInstance<ClipPosterService>(p, appSettings, logger));
+                serviceCollection.AddLogging(l => l.AddConsole());
+                foreach (var item in allSettings.Items)
+                {
+                    var itemAppSettings = JsonConvert.DeserializeObject<ApplicationSettings>(item["Settings"].S);
+                    serviceCollection.AddTransient(p => ActivatorUtilities.CreateInstance<ClipPosterService>(p, itemAppSettings, logger));
+                }
                 serviceProvider = serviceCollection.BuildServiceProvider();
                 return appSettings;
             }

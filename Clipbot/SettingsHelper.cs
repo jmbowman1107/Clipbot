@@ -12,7 +12,7 @@ namespace Clipbot
     public static class SettingsHelpers
     {
         #region AddOrUpdateAppSetting
-        public static void AddOrUpdateAppSetting<T>(T value, ILogger logger, bool isDynamoDb)
+        public static void AddOrUpdateAppSetting<T>(string broadcasterId, T value, ILogger logger, bool isDynamoDb)
         {
             try
             {
@@ -33,7 +33,7 @@ namespace Clipbot
                 {
                     try
                     {
-                        UpdateSettingsInDynamoDb(value);
+                        UpdateSettingsInDynamoDb(broadcasterId, value);
                     }
                     catch (Exception ex)
                     {
@@ -51,12 +51,12 @@ namespace Clipbot
         #endregion
 
         #region UpdateSettingsInDynamoDb
-        private static void UpdateSettingsInDynamoDb<T>(T value)
+        private static void UpdateSettingsInDynamoDb<T>(string broadcasterId, T value)
         {
             var dynamoDbConfig = new AmazonDynamoDBConfig();
             dynamoDbConfig.RegionEndpoint = RegionEndpoint.USEast1;
             var client = new AmazonDynamoDBClient(dynamoDbConfig);
-            client.UpdateItemAsync(new UpdateItemRequest("ClipbotSettings", new Dictionary<string, AttributeValue> { { "BroadcasterID", new AttributeValue("75230612") } },
+            client.UpdateItemAsync(new UpdateItemRequest("ClipbotSettings", new Dictionary<string, AttributeValue> { { "BroadcasterID", new AttributeValue(broadcasterId) } },
                 new Dictionary<string, AttributeValueUpdate> { { "Settings", new AttributeValueUpdate(new AttributeValue(JsonConvert.SerializeObject(value)), AttributeAction.PUT) } })).Wait();
         } 
         #endregion
