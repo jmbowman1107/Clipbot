@@ -28,5 +28,6 @@ namespace BanHateBot.Models
         [JsonProperty("rank")]
         public long Rank { get; set; } 
         #endregion
+        public string DisplayName { get; set; }
     }
 }

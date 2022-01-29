@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using BanHateBot.Models;
 using TwitchLib.Client;
@@ -14,7 +16,8 @@ namespace BanHateBot
         private static DateTimeOffset? LastHeistEnd { get; set; }
         #endregion
         #region Fields
-        private string _channelName; 
+        private string _channelName;
+        private CancellationTokenSource _cts;
         #endregion
 
         #region HeistSettings
@@ -49,90 +52,126 @@ namespace BanHateBot
             HeistInProgress = true;
             LastHeistStart = DateTimeOffset.Now;
             TwitchChatClient.SendMessage(_channelName, HeistSettings.OnFirstEntryMessage.Replace("{user}", startingUser));
+            _cts = new CancellationTokenSource();
             Task.Run(async () =>
             {
-                await Task.Delay(HeistSettings.StartDelay * 1000);
+                await Task.Delay(HeistSettings.StartDelay * 1000, _cts.Token);
+                if (_cts.Token.IsCancellationRequested) return;
                 await EndHeist();
-            });
+            }, _cts.Token);
         }
         #endregion
         #region JoinHeist
-        public async Task JoinHeist(string userName, bool isAll, int? points = null)
+        public async Task JoinHeist(string userName, bool isAll, int? points = null, bool resetUser = false)
         {
             var user = await StreamElementsClient.GetUser(userName);
+            user.DisplayName = userName;
             if (!HeistInProgress && LastHeistEnd.HasValue &&
                 LastHeistEnd.Value.AddSeconds(HeistSettings.Cooldown) > DateTimeOffset.Now)
             {
-                TwitchChatClient.SendMessage(_channelName, HeistSettings.WaitForCooldownMessage);
+                TwitchChatClient.SendMessage(_channelName, $"{HeistSettings.WaitForCooldownMessage}: {Convert.ToInt32(HeistSettings.Cooldown - (DateTimeOffset.Now-LastHeistEnd.Value).TotalSeconds)} seconds remaining.");
             }
             if (LastHeistStart == null || !HeistInProgress && LastHeistEnd.HasValue && LastHeistEnd.Value.AddSeconds(HeistSettings.Cooldown) <= DateTimeOffset.Now)
             {
-                if (await JoinAndSubtractPointsForUser(user, isAll, points)) StartHeist(userName);
+                if (await JoinAndSubtractPointsForUser(user, isAll, points, resetUser)) StartHeist(userName);
             }
             else if (HeistInProgress)
             {
-                await JoinAndSubtractPointsForUser(user, isAll, points);
+                await JoinAndSubtractPointsForUser(user, isAll, points, resetUser);
             }
         }
         #endregion
         #region EndHeist
-        public async Task EndHeist()
+        public async Task EndHeist(bool cancelHeist=false)
         {
             HeistInProgress = false;
-            LastHeistEnd = DateTimeOffset.Now;
+            LastHeistEnd = DateTimeOffset.Now.AddSeconds(-300);
 
-            TwitchChatClient.SendMessage(_channelName, HeistSettings.OnSuccessfulStartMessage);
+            if (cancelHeist)
+            {
+                try
+                {
+                    _cts.Cancel();
+                    foreach (var participant in HeistParticipants)
+                    {
+                        await StreamElementsClient.AddOrRemovePointsFromUser(participant.User.Username, participant.Points);
+                    }
 
-            var rnd = new Random();
-            foreach (var participant in HeistParticipants)
-            {
-                participant.WonHeist = rnd.Next(1, 100) <  HeistSettings.ChanceToWinViewers;
-            }
-
-            if (HeistParticipants.All(a => a.WonHeist.HasValue && a.WonHeist.Value))
-            {
-                TwitchChatClient.SendMessage(_channelName, HeistParticipants.Count > 1 ? HeistSettings.GroupOnAllWinMessage : HeistSettings.SoloOnWinMessage);
-            }
-            else if (HeistParticipants.All(a => a.WonHeist.HasValue && !a.WonHeist.Value))
-            {
-                TwitchChatClient.SendMessage(_channelName, HeistParticipants.Count > 1 ? HeistSettings.GroupOnAllLoseMessage : HeistSettings.SoloOnLossMessage);
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistCancelledMessage);
+                }
+                catch
+                {
+                    // Will only fail here if CancellationToken is already cancelled.. so whatever
+                }
             }
             else
             {
-                TwitchChatClient.SendMessage(_channelName, HeistSettings.GroupOnPartialWinMessage);
-            }
+                TwitchChatClient.SendMessage(_channelName, HeistSettings.OnSuccessfulStartMessage);
+                var rnd = new Random();
+                foreach (var participant in HeistParticipants)
+                {
+                    participant.WonHeist = rnd.Next(1, 100) < HeistSettings.ChanceToWinViewers;
+                }
 
-            TwitchChatClient.SendMessage(_channelName, await GenerateResultString());
+                if (HeistParticipants.All(a => a.WonHeist.HasValue && a.WonHeist.Value))
+                {
+                    TwitchChatClient.SendMessage(_channelName, HeistParticipants.Count > 1 ? HeistSettings.GroupOnAllWinMessage : HeistSettings.SoloOnWinMessage.Replace("{user}", HeistParticipants[0].User.DisplayName));
+                }
+                else if (HeistParticipants.All(a => a.WonHeist.HasValue && !a.WonHeist.Value))
+                {
+                    TwitchChatClient.SendMessage(_channelName, HeistParticipants.Count > 1 ? HeistSettings.GroupOnAllLoseMessage.Replace("{meatshields}", string.Join(',', HeistParticipants.Where(a => !a.WonHeist.Value).Select(a => $" riPepperonis {a.User.DisplayName}"))) : HeistSettings.SoloOnLossMessage.Replace("{user}", HeistParticipants[0].User.DisplayName));
+                }
+                else
+                {
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.GroupOnPartialWinMessage.Replace("{meatshields}", string.Join(',', HeistParticipants.Where(a => !a.WonHeist.Value).Select(a => $" riPepperonis {a.User.DisplayName}"))));
+                }
+
+                TwitchChatClient.SendMessage(_channelName, await GenerateResultString());
+            }
             HeistParticipants = new List<HeistParticipant>();
 
         }
         #endregion
 
         #region JoinAndSubtractPointsForUser
-        private async Task<bool> JoinAndSubtractPointsForUser(StreamElementsUser user, bool isAll, int? points = null)
+        private async Task<bool> JoinAndSubtractPointsForUser(StreamElementsUser user, bool isAll, int? points = null, bool resetUser = false)
         {
+            if (resetUser && HeistParticipants.Any(a => a.User.Username == user.Username))
+            {
+                var me = HeistParticipants.FirstOrDefault(a => a.User.Username == user.Username);
+                if (me == null)
+                {
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistResetMeNotJoinedMessage.Replace("{user}", user.DisplayName));
+                    return false;
+                }
+                TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistResetMeMessage.Replace("{user}", user.DisplayName));
+                await StreamElementsClient.AddOrRemovePointsFromUser(me.User.Username, me.Points);
+                HeistParticipants.Remove(me);
+                if (!HeistParticipants.Any()) await this.EndHeist(true);
+                return false;
+            }
             if (HeistParticipants.Any(a => a.User.Username == user.Username))
             {
-                TwitchChatClient.SendMessage(_channelName, HeistSettings.UserAlreadyJoinedMessage.Replace("{user}", user.Username));
+                TwitchChatClient.SendMessage(_channelName, HeistSettings.UserAlreadyJoinedMessage.Replace("{user}", user.DisplayName));
                 return false;
             }
             else
             {
                 if (points.HasValue && points.Value > user.Points)
                 {
-                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserNotEnoughPointsMessage.Replace("{user}", user.Username).Replace("{points}", user.Points.ToString()));
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserNotEnoughPointsMessage.Replace("{user}", user.DisplayName).Replace("{points}", user.Points.ToString()));
                     return false;
                 }
 
                 if (points.HasValue && points.Value > HeistSettings.MaxAmount)
                 {
-                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserOverMaxPointsMessage.Replace("{user}", user.Username).Replace("{maxamount}", HeistSettings.MaxAmount.ToString()));
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserOverMaxPointsMessage.Replace("{user}", user.DisplayName).Replace("{maxamount}", HeistSettings.MaxAmount.ToString()));
                     return false;
                 }
 
                 if (points.HasValue && points.Value < HeistSettings.MinEntries)
                 {
-                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserUnderMinPointsMessage.Replace("{user}", user.Username).Replace("{minentries}", HeistSettings.MinEntries.ToString()));
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.UserUnderMinPointsMessage.Replace("{user}", user.DisplayName).Replace("{minentries}", HeistSettings.MinEntries.ToString()));
                     return false;
                 }
 
@@ -167,7 +206,7 @@ namespace BanHateBot
 
                 if (HeistParticipants.Count > 0)
                 {
-                    TwitchChatClient.SendMessage(_channelName, HeistSettings.OnEntryMessage.Replace("{user}", user.Username));
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.OnEntryMessage.Replace("{user}", user.DisplayName));
                 }
 
                 HeistParticipants.Add(participant);
@@ -184,11 +223,11 @@ namespace BanHateBot
                 await StreamElementsClient.AddOrRemovePointsFromUser(winner.User.Username, winner.Points * 2);
                 if (string.IsNullOrWhiteSpace(resultString))
                 {
-                    resultString = $"Result: {winner.User.Username} ({winner.Points * 2})";
+                    resultString = $"Result: {winner.User.DisplayName} ({winner.Points * 2})";
                 }
                 else
                 {
-                    resultString = resultString + $", {winner.User.Username} ({winner.Points * 2})";
+                    resultString = resultString + $", {winner.User.DisplayName} ({winner.Points * 2})";
                 }
             }
 
