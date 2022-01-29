@@ -10,10 +10,10 @@ namespace BanHateBot
     public class StreamElementsClient
     {
         #region ChannelId
-        public string ChannelId { get; set; } = "61a507004f57efdbaa1b78d5"; 
+        public string ChannelId { get; set; } = ""; 
         #endregion
         #region JwtTokenString
-        public string JwtTokenString { get; set; } = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiNjFhNTA3MDA0ZjU3ZWYzMTY1MWI3OGQ0Iiwicm9sZSI6Im93bmVyIiwiY2hhbm5lbCI6IjYxYTUwNzAwNGY1N2VmZGJhYTFiNzhkNSIsInByb3ZpZGVyIjoidHdpdGNoIiwiYXV0aFRva2VuIjoibGxLV1JzT29DaUo4ZTY2WS1aWkJIOHJpX21IdHVlS0o4RlRncldOVVk3d0VTTnRGIiwiaWF0IjoxNjM4ODI5Mzc4LCJpc3MiOiJTdHJlYW1FbGVtZW50cyJ9.igfh4z4cXrKTgZeaXDU0-kpiS6I9ZkuqklnMeSBLKDU"; 
+        public string JwtTokenString { get; set; } = ""; 
         #endregion
         #region HttpClient
         protected HttpClient HttpClient
