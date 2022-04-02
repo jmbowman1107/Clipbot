@@ -15,7 +15,7 @@
         public bool? WasRezzed { get; set; }
         #endregion
         #region UsedRez
-        public bool? UsedRez { get; set} 
+        public bool? UsedRez { get; set; } 
         #endregion
     }
 }
