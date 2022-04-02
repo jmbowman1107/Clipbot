@@ -21,7 +21,10 @@ namespace BanHateBot
         #endregion
 
         #region HeistSettings
-        public HeistSettings HeistSettings { get; set; } 
+        public HeistSettings HeistSettings { get; set; }
+        #endregion
+        #region PreviousHeistParticipants
+        public List<HeistParticipant> PreviousHeistParticipants { get; set; } = new List<HeistParticipant>();
         #endregion
         #region HeistParticipants
         public List<HeistParticipant> HeistParticipants { get; set; } = new List<HeistParticipant>(); 
@@ -73,7 +76,8 @@ namespace BanHateBot
             }
             if (LastHeistStart == null || !HeistInProgress && LastHeistEnd.HasValue && LastHeistEnd.Value.AddSeconds(HeistSettings.Cooldown) <= DateTimeOffset.Now)
             {
-                if (await JoinAndSubtractPointsForUser(user, isAll, points, resetUser)) StartHeist(userName);
+                if (!resetUser) if (await JoinAndSubtractPointsForUser(user, isAll, points)) StartHeist(userName);
+
             }
             else if (HeistInProgress)
             {
@@ -85,7 +89,7 @@ namespace BanHateBot
         public async Task EndHeist(bool cancelHeist=false)
         {
             HeistInProgress = false;
-            LastHeistEnd = DateTimeOffset.Now.AddSeconds(-300);
+            LastHeistEnd = DateTimeOffset.Now;
 
             if (cancelHeist)
             {
@@ -98,6 +102,7 @@ namespace BanHateBot
                     }
 
                     TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistCancelledMessage);
+                    LastHeistEnd = DateTimeOffset.Now.AddSeconds(-300);
                 }
                 catch
                 {
@@ -126,9 +131,56 @@ namespace BanHateBot
                     TwitchChatClient.SendMessage(_channelName, HeistSettings.GroupOnPartialWinMessage.Replace("{meatshields}", string.Join(',', HeistParticipants.Where(a => !a.WonHeist.Value).Select(a => $" riPepperonis {a.User.DisplayName}"))));
                 }
 
-                TwitchChatClient.SendMessage(_channelName, await GenerateResultString());
+                TwitchChatClient.SendMessage(_channelName, await DistributePointsAndGenerateResultString());
             }
+            PreviousHeistParticipants = HeistParticipants.ToList();
             HeistParticipants = new List<HeistParticipant>();
+
+        }
+        #endregion
+        #region RezUser
+        public async Task RezUser(string rezzingUser, string rezzedUser)
+        {
+            if (HeistInProgress) TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you cannot rez someone while a heist is still in progress!");
+            var rezzingUserUser = PreviousHeistParticipants.FirstOrDefault(a => a.User.Username.ToLower() == rezzingUser.ToLower());
+            if (rezzingUserUser == null)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, only people who participated in the last heist can rez!");
+                return;
+            }
+
+            var rezzedUserUser = PreviousHeistParticipants.FirstOrDefault(a => a.User.Username.ToLower() == rezzedUser.ToLower());
+            if (rezzedUserUser == null)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you cannot rez someone who did not participate in the last heist!");
+                return;
+            }
+
+            if (rezzingUserUser.WonHeist.Value == false)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you cannot rez if you lost the last heist!");
+                return;
+            }
+
+            if (rezzedUserUser.WonHeist.Value == true)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you cannot rez someone who won the last heist!");
+                return;
+            }
+
+            if (rezzedUserUser.WasRezzed.HasValue && rezzedUserUser.WasRezzed.Value == true)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, {rezzedUser} has already been rezzed.");
+                return;
+            }
+
+            if (rezzingUserUser.WonHeist.Value == true && rezzedUserUser.WonHeist.Value == false)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} has sacrificed half of their heist winnings ({rezzingUserUser.Points / 2} to bring back {rezzedUser} from the dead and recover their original bet ({rezzedUserUser.Points})!");
+                rezzedUserUser.WasRezzed = true;
+                await StreamElementsClient.AddOrRemovePointsFromUser(rezzingUserUser.User.Username, (rezzingUserUser.Points/2)*-1);
+                await StreamElementsClient.AddOrRemovePointsFromUser(rezzedUserUser.User.Username, rezzedUserUser.Points);
+            }
 
         }
         #endregion
@@ -136,18 +188,21 @@ namespace BanHateBot
         #region JoinAndSubtractPointsForUser
         private async Task<bool> JoinAndSubtractPointsForUser(StreamElementsUser user, bool isAll, int? points = null, bool resetUser = false)
         {
-            if (resetUser && HeistParticipants.Any(a => a.User.Username == user.Username))
+            if (resetUser)
             {
-                var me = HeistParticipants.FirstOrDefault(a => a.User.Username == user.Username);
-                if (me == null)
+                if (HeistParticipants.Any(a => a.User.Username == user.Username))
                 {
-                    TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistResetMeNotJoinedMessage.Replace("{user}", user.DisplayName));
-                    return false;
+                    var me = HeistParticipants.FirstOrDefault(a => a.User.Username == user.Username);
+                    if (me == null)
+                    {
+                        TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistResetMeNotJoinedMessage.Replace("{user}", user.DisplayName));
+                        return false;
+                    }
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistResetMeMessage.Replace("{user}", user.DisplayName));
+                    await StreamElementsClient.AddOrRemovePointsFromUser(me.User.Username, me.Points);
+                    HeistParticipants.Remove(me);
+                    if (!HeistParticipants.Any()) await this.EndHeist(true);
                 }
-                TwitchChatClient.SendMessage(_channelName, HeistSettings.HeistResetMeMessage.Replace("{user}", user.DisplayName));
-                await StreamElementsClient.AddOrRemovePointsFromUser(me.User.Username, me.Points);
-                HeistParticipants.Remove(me);
-                if (!HeistParticipants.Any()) await this.EndHeist(true);
                 return false;
             }
             if (HeistParticipants.Any(a => a.User.Username == user.Username))
@@ -214,8 +269,8 @@ namespace BanHateBot
             }
         } 
         #endregion
-        #region GenerateResultString
-        private async Task<string> GenerateResultString()
+        #region DistributePointsAndGenerateResultString
+        private async Task<string> DistributePointsAndGenerateResultString()
         {
             string resultString = "";
             foreach (var winner in HeistParticipants.Where(a => a.WonHeist.HasValue && a.WonHeist.Value))
