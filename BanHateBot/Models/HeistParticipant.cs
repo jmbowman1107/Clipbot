@@ -12,7 +12,10 @@
         public bool? WonHeist { get; set; }
         #endregion
         #region WasRezzed
-        public bool? WasRezzed { get; set; } 
+        public bool? WasRezzed { get; set; }
+        #endregion
+        #region UsedRez
+        public bool? UsedRez { get; set} 
         #endregion
     }
 }

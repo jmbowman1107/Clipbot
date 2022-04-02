@@ -174,10 +174,17 @@ namespace BanHateBot
                 return;
             }
 
+            if (rezzingUserUser.UsedRez.HasValue && rezzingUserUser.UsedRez.Value == true)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you can only rez one person per heist.");
+                return;
+            }
+
             if (rezzingUserUser.WonHeist.Value == true && rezzedUserUser.WonHeist.Value == false)
             {
                 TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} has sacrificed half of their heist winnings ({rezzingUserUser.Points / 2} to bring back {rezzedUser} from the dead and recover their original bet ({rezzedUserUser.Points})!");
                 rezzedUserUser.WasRezzed = true;
+                rezzingUserUser.UsedRez = true;
                 await StreamElementsClient.AddOrRemovePointsFromUser(rezzingUserUser.User.Username, (rezzingUserUser.Points/2)*-1);
                 await StreamElementsClient.AddOrRemovePointsFromUser(rezzedUserUser.User.Username, rezzedUserUser.Points);
             }
