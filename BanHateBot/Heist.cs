@@ -132,6 +132,10 @@ namespace BanHateBot
                 }
 
                 TwitchChatClient.SendMessage(_channelName, await DistributePointsAndGenerateResultString());
+                if (HeistParticipants.Count(a => a.WonHeist is true) > 0 && HeistParticipants.Count(a => a.WonHeist is false) > 0)
+                {
+                    TwitchChatClient.SendMessage(_channelName, "This heist isn't over yet! Heist winners can !rez <UserName> for a chance to rez someone who did not make it out alive, sacrificing half of their winnings, but stopping the fallen from losing their bet. Failing to successful rez will result in a loss of winnings.");
+                }
             }
             PreviousHeistParticipants = HeistParticipants.ToList();
             HeistParticipants = new List<HeistParticipant>();
@@ -182,13 +186,21 @@ namespace BanHateBot
 
             if (rezzingUserUser.WonHeist.Value == true && rezzedUserUser.WonHeist.Value == false)
             {
-                TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} has sacrificed half of their heist winnings ({rezzingUserUser.Points / 2} to bring back {rezzedUser} from the dead and recover their original bet ({rezzedUserUser.Points})!");
-                rezzedUserUser.WasRezzed = true;
+                var rnd = new Random();
+                if (rnd.Next(1, 100) < HeistSettings.ChanceToWinViewers)
+                {
+                    TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} swooped in and sacrificed half of their heist winnings ({rezzingUserUser.Points / 2} to bring back {rezzedUser} from the dead and recover their original bet ({rezzedUserUser.Points})!");
+                    await StreamElementsClient.AddOrRemovePointsFromUser(rezzingUserUser.User.Username, (rezzingUserUser.Points / 2) * -1);
+                    await StreamElementsClient.AddOrRemovePointsFromUser(rezzedUserUser.User.Username, rezzedUserUser.Points);
+                    rezzedUserUser.WasRezzed = true;
+                }
+                else
+                {
+                    TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} got stunned while trying to rez {rezzedUser} and lost all there winnings({rezzingUserUser.Points / 2})!");
+                    await StreamElementsClient.AddOrRemovePointsFromUser(rezzingUserUser.User.Username, (rezzingUserUser.Points) * -1);
+                }
                 rezzingUserUser.UsedRez = true;
-                await StreamElementsClient.AddOrRemovePointsFromUser(rezzingUserUser.User.Username, (rezzingUserUser.Points/2)*-1);
-                await StreamElementsClient.AddOrRemovePointsFromUser(rezzedUserUser.User.Username, rezzedUserUser.Points);
             }
-
         }
         #endregion
 
