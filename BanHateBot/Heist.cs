@@ -153,16 +153,16 @@ namespace BanHateBot
                 return;
             }
 
+            if (rezzingUserUser.WonHeist.Value == false)
+            {
+                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you cannot rez if you lost the last heist!");
+                return;
+            }
+
             var rezzedUserUser = PreviousHeistParticipants.FirstOrDefault(a => a.User.Username.ToLower() == rezzedUser.ToLower());
             if (rezzedUserUser == null)
             {
                 TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you cannot rez someone who did not participate in the last heist!");
-                return;
-            }
-
-            if (rezzingUserUser.WonHeist.Value == false)
-            {
-                TwitchChatClient.SendMessage(_channelName, $"Sorry {rezzingUser}, you cannot rez if you lost the last heist!");
                 return;
             }
 
@@ -196,7 +196,7 @@ namespace BanHateBot
                 }
                 else
                 {
-                    TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} got stunned while trying to rez {rezzedUser} and lost all there winnings({rezzingUserUser.Points / 2})!");
+                    TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} got stunned while trying to rez {rezzedUser} and lost all there winnings({rezzingUserUser.Points})!");
                     await StreamElementsClient.AddOrRemovePointsFromUser(rezzingUserUser.User.Username, (rezzingUserUser.Points) * -1);
                 }
                 rezzingUserUser.UsedRez = true;
