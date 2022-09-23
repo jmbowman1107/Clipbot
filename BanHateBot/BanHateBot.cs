@@ -13,6 +13,7 @@ using TwitchLib.Client.Events;
 using TwitchLib.Client.Extensions;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
+using TwitchLib.Communication.Events;
 using TwitchLib.Communication.Models;
 using TwitchLib.PubSub;
 using TwitchLib.PubSub.Events;
@@ -88,22 +89,39 @@ namespace BanHateBot
             _twitchChatClient.OnJoinedChannel += ChatClient_OnJoinedChannel;
             _twitchChatClient.OnConnected += ChatClient_OnConnected;
             _twitchChatClient.OnMessageReceived += ChatClient_OnMessageReceived;
+            _twitchChatClient.OnDisconnected += ChatClient_OnDisconnected;
             _twitchChatClient.Connect();
         }
+
+
+
         #endregion
         #region InitializeTwitchApi
-        private void InitializeTwitchApi()
+        private async void InitializeTwitchApi()
         {
             _twitchApi = new TwitchAPI();
             _twitchApi.Settings.ClientId = "";
+            //_twitchApi.Settings.AccessToken = "";
             _twitchApi.Settings.AccessToken = "";
         }
         #endregion
-
         #region ChatClient_OnLog
         private void ChatClient_OnLog(object sender, OnLogArgs e)
         {
             Console.WriteLine($"{e.DateTime.ToString()}: {e.BotUsername} - {e.Data}");
+        }
+        #endregion
+        #region ChatClient_OnDisconnected
+        private void ChatClient_OnDisconnected(object? sender, OnDisconnectedEventArgs e)
+        {
+            // If we disconnect, wait 30 seconds, cleanup and reconnect.
+            Task.Delay(30000).Wait();
+            _twitchChatClient.OnLog -= ChatClient_OnLog;
+            _twitchChatClient.OnJoinedChannel -= ChatClient_OnJoinedChannel;
+            _twitchChatClient.OnConnected -= ChatClient_OnConnected;
+            _twitchChatClient.OnMessageReceived -= ChatClient_OnMessageReceived;
+            _twitchChatClient.OnDisconnected -= ChatClient_OnDisconnected;
+            InitializeChat();
         }
         #endregion
         #region ChatClient_OnConnected
@@ -125,6 +143,15 @@ namespace BanHateBot
         {
             if (e.ChatMessage.Username.Contains("hoss00312") || e.ChatMessage.Username.Contains("idwt_"))
                 _twitchChatClient.BanUser(e.ChatMessage.Channel, e.ChatMessage.Username, "We don't tolerate hate in this channel. Goodbye.");
+
+            if (e.ChatMessage.Message.ToLower().Contains("buy followers"))
+            {
+                var test = _twitchApi.Helix.Users.GetUsersFollowsAsync(fromId: e.ChatMessage.UserId, toId: "75230612").Result;
+                if (test.Follows != null && !test.Follows.Any())
+                {
+                    _twitchChatClient.BanUser(e.ChatMessage.Channel, e.ChatMessage.Username, "We don't want what you are selling.. go away.");
+                }
+            }
 
             #region Heist Number
             var isHeistMessage = Regex.Match(e.ChatMessage.Message, @"^!heist \d+$");
@@ -158,11 +185,24 @@ namespace BanHateBot
             #endregion
 
             #region Heist Reset Me
-            var isHeistResetMeMessage = Regex.Match(e.ChatMessage.Message, @"^!heist resetme$");
+            var isHeistResetMeMessage = Regex.Match(e.ChatMessage.Message, @"^!heist undo$");
             if (isHeistResetMeMessage.Captures.Count > 0)
             {
                 Heist.JoinHeist(e.ChatMessage.DisplayName, false, null, true).Wait();
-            } 
+            }
+            #endregion
+
+            #region Heist Rez
+            var isHeistRezMessage = Regex.Match(e.ChatMessage.Message, @"^!rez \S+$");
+            if (isHeistRezMessage.Captures.Count > 0)
+            {
+                var personToRez = e.ChatMessage.Message.Replace("!rez ", string.Empty);
+                if (personToRez.StartsWith("@"))
+                {
+                    personToRez = personToRez.Remove(0, 1);
+                }
+                Heist.RezUser(e.ChatMessage.DisplayName, personToRez).Wait();
+            }
             #endregion
 
             #region Mark
@@ -194,6 +234,7 @@ namespace BanHateBot
             #endregion
         }
         #endregion
+
         #region PubSubClient_OnPubSubServiceConnected
         private void PubSubClient_OnPubSubServiceConnected(object sender, EventArgs e)
         {

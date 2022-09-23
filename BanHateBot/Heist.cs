@@ -112,6 +112,10 @@ namespace BanHateBot
             else
             {
                 TwitchChatClient.SendMessage(_channelName, HeistSettings.OnSuccessfulStartMessage);
+                if (HeistParticipants.Count >= 8)
+                {
+                    TwitchChatClient.SendMessage(_channelName, HeistSettings.OnSuperHeistStartMessage);
+                }
                 var rnd = new Random();
                 foreach (var participant in HeistParticipants)
                 {
@@ -189,7 +193,7 @@ namespace BanHateBot
                 var rnd = new Random();
                 if (rnd.Next(1, 100) < HeistSettings.ChanceToWinViewers)
                 {
-                    TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} swooped in and sacrificed half of their heist winnings ({rezzingUserUser.Points / 2} to bring back {rezzedUser} from the dead and recover their original bet ({rezzedUserUser.Points})!");
+                    TwitchChatClient.SendMessage(_channelName, $"{rezzingUser} swooped in and sacrificed half of their heist winnings ({rezzingUserUser.Points / 2}) to bring back {rezzedUser} from the dead and recover their original bet ({rezzedUserUser.Points})!");
                     await StreamElementsClient.AddOrRemovePointsFromUser(rezzingUserUser.User.Username, (rezzingUserUser.Points / 2) * -1);
                     await StreamElementsClient.AddOrRemovePointsFromUser(rezzedUserUser.User.Username, rezzedUserUser.Points);
                     rezzedUserUser.WasRezzed = true;
@@ -283,6 +287,11 @@ namespace BanHateBot
                     TwitchChatClient.SendMessage(_channelName, HeistSettings.OnEntryMessage.Replace("{user}", user.DisplayName));
                 }
 
+                if (HeistParticipants.Count == 8)
+                {
+                    TwitchChatClient.SendMessage(_channelName, ".announce Eight people have joined the heist! Winners of this heist will receive double points!");
+                }
+
                 HeistParticipants.Add(participant);
                 return true;
             }
@@ -294,14 +303,19 @@ namespace BanHateBot
             string resultString = "";
             foreach (var winner in HeistParticipants.Where(a => a.WonHeist.HasValue && a.WonHeist.Value))
             {
-                await StreamElementsClient.AddOrRemovePointsFromUser(winner.User.Username, winner.Points * 2);
+                var points = winner.Points * 2;
+                if (HeistParticipants.Count >= 8)
+                {
+                    points = points * 2;
+                }
+                await StreamElementsClient.AddOrRemovePointsFromUser(winner.User.Username, points);
                 if (string.IsNullOrWhiteSpace(resultString))
                 {
-                    resultString = $"Result: {winner.User.DisplayName} ({winner.Points * 2})";
+                    resultString = $"Result: {winner.User.DisplayName} ({points})";
                 }
                 else
                 {
-                    resultString = resultString + $", {winner.User.DisplayName} ({winner.Points * 2})";
+                    resultString = resultString + $", {winner.User.DisplayName} ({points})";
                 }
             }
 
