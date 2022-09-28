@@ -26,6 +26,7 @@ namespace BanHateBot
         private TwitchClient _twitchChatClient;
         private TwitchPubSub _twitchPubSubClient;
         private TwitchAPI _twitchApi;
+        private AdvancedClipper _advancedClipper;
         private Heist Heist { get; set; }
 
         #region Constructor
@@ -34,6 +35,7 @@ namespace BanHateBot
             InitializePubSub();
             InitializeChat();
             InitializeTwitchApi();
+            _advancedClipper = new AdvancedClipper { StreamerName = "Vlyca", TwitchApi = _twitchApi, TwitchChatClient = _twitchChatClient };
         } 
         #endregion
 
@@ -154,7 +156,7 @@ namespace BanHateBot
             }
 
             #region Heist Number
-            var isHeistMessage = Regex.Match(e.ChatMessage.Message, @"^!heist \d+$");
+            var isHeistMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist \d+$");
             if (isHeistMessage.Captures.Count > 0)
             {
                 var number = Regex.Match(e.ChatMessage.Message, @"\d+$");
@@ -166,7 +168,7 @@ namespace BanHateBot
             #endregion
 
             #region Heist All
-            var isHeistAllMessage = Regex.Match(e.ChatMessage.Message, @"^!heist all$");
+            var isHeistAllMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist all$");
             if (isHeistAllMessage.Captures.Count > 0)
             {
                 Heist.JoinHeist(e.ChatMessage.DisplayName, true).Wait();
@@ -174,7 +176,7 @@ namespace BanHateBot
             #endregion
 
             #region Heist Cancel
-            var isHeistCancelMessage = Regex.Match(e.ChatMessage.Message, @"^!heist cancel$");
+            var isHeistCancelMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist cancel$");
             if (isHeistCancelMessage.Captures.Count > 0)
             {
                 if (e.ChatMessage.IsBroadcaster || e.ChatMessage.IsModerator)
@@ -185,7 +187,7 @@ namespace BanHateBot
             #endregion
 
             #region Heist Reset Me
-            var isHeistResetMeMessage = Regex.Match(e.ChatMessage.Message, @"^!heist undo$");
+            var isHeistResetMeMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist undo$");
             if (isHeistResetMeMessage.Captures.Count > 0)
             {
                 Heist.JoinHeist(e.ChatMessage.DisplayName, false, null, true).Wait();
@@ -193,7 +195,7 @@ namespace BanHateBot
             #endregion
 
             #region Heist Rez
-            var isHeistRezMessage = Regex.Match(e.ChatMessage.Message, @"^!rez \S+$");
+            var isHeistRezMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!rez \S+$");
             if (isHeistRezMessage.Captures.Count > 0)
             {
                 var personToRez = e.ChatMessage.Message.Replace("!rez ", string.Empty);
@@ -206,7 +208,7 @@ namespace BanHateBot
             #endregion
 
             #region Mark
-            var isMarkMessage = Regex.Match(e.ChatMessage.Message, @"^!mark$");
+            var isMarkMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!mark$");
             if (isMarkMessage.Captures.Count > 0)
             {
                 MarkStream(e);
@@ -214,10 +216,10 @@ namespace BanHateBot
             #endregion
 
             #region Mark Message
-            var isMarkWithMessage = Regex.Match(e.ChatMessage.Message, @"^!mark .*$");
+            var isMarkWithMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!mark .*$");
             if (isMarkWithMessage.Captures.Count > 0)
             {
-                var markDescription = Regex.Match(e.ChatMessage.Message, @" .*$");
+                var markDescription = Regex.Match(e.ChatMessage.Message.ToLower(), @" .*$");
                 if (markDescription.Captures.Count > 0)
                 {
                     MarkStream(e, markDescription.Captures[0].Value.Trim());
@@ -226,11 +228,17 @@ namespace BanHateBot
             #endregion
 
             #region Clip
-            var isClipMessage = Regex.Match(e.ChatMessage.Message, @"^!clip$");
+            var isClipMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!clip$");
             if (isClipMessage.Captures.Count > 0)
             {
-                ClipStream(e);
+                _advancedClipper.CreateTwitchClip(e);
             } 
+
+            var isPostNoobHunter = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!clip noobhunter$");
+            if (isPostNoobHunter.Captures.Count >0)
+            {
+                _advancedClipper.ValidateAndPostToNoobHuner(e);
+            }
             #endregion
         }
         #endregion
@@ -295,52 +303,6 @@ namespace BanHateBot
                 else
                 {
                     _twitchChatClient.SendMessage(e.ChatMessage.Channel,  "Stream was NOT successfully marked.. Someone tell Jeff..");
-                }
-            }
-        }
-        #endregion
-
-        #region ClipStream
-        private void ClipStream(OnMessageReceivedArgs e)
-        {
-            CreatedClipResponse clip = null;
-            try
-            {
-                if (e.ChatMessage.IsVip || e.ChatMessage.IsModerator || e.ChatMessage.IsBroadcaster || e.ChatMessage.IsSubscriber)
-                {
-                    clip = _twitchApi.Helix.Clips.CreateClipAsync("75230612").Result;
-
-                    if (clip != null && clip.CreatedClips.Any())
-                    {
-                        _twitchChatClient.SendMessage(e.ChatMessage.Channel, $"Clip created successfully {clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty)}");
-                    }
-                    else
-                    {
-                        _twitchChatClient.SendMessage(e.ChatMessage.Channel, $"Stream NOT successfully clipped.");
-                    }
-                }
-                else
-                {
-                    _twitchChatClient.SendMessage(e.ChatMessage.Channel, $"Sorry {e.ChatMessage.Username}, only {e.ChatMessage.Channel}, Subscribers, VIPS, and Moderators can clip the stream from chat.");
-                }
-            }
-            catch (Exception ex)
-            {
-                if (ex.InnerException != null && ex.InnerException.Source == "Newtonsoft.Json")
-                {
-                    if (clip != null && clip.CreatedClips.Any())
-                    {
-                        _twitchChatClient.SendMessage(e.ChatMessage.Channel, $"Stream successfully clipped: ");
-                        _twitchChatClient.SendMessage(e.ChatMessage.Channel, $"Clip created successfully {clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty)}");
-                    }
-                    else
-                    {
-                        _twitchChatClient.SendMessage(e.ChatMessage.Channel, $"Stream NOT successfully clipped.");
-                    }
-                }
-                else
-                {
-                    _twitchChatClient.SendMessage(e.ChatMessage.Channel, "Stream was NOT successfully clipped.. Someone tell Jeff..");
                 }
             }
         }
