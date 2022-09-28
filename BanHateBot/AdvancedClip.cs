@@ -81,8 +81,6 @@ namespace BanHateBot
         #region ValidateAndPostToNoobHuner
         public void ValidateAndPostToNoobHuner(OnMessageReceivedArgs e)
         {
-            // Check if user is mod or has a recent clip to post, 
-
             string url = string.Empty;
 
             if (MostRecentClips.TryGetValue(e.ChatMessage.Username, out (string url, DateTime dateTime) clip))
@@ -152,6 +150,7 @@ namespace BanHateBot
             finally
             {
                 if (driver != null)
+                {
                     try
                     {
                         driver.Close();
@@ -160,6 +159,7 @@ namespace BanHateBot
                     {
                         // Swallow
                     }
+                }
             }
         }
         #endregion
