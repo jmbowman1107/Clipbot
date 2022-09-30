@@ -43,7 +43,7 @@ namespace BanHateBot
                     {
                         TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Clip created successfully {clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty)}");
                         MostRecentClips[e.ChatMessage.Username] = (clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty), DateTime.UtcNow);
-                        TwitchChatClient.SendMessage(e.ChatMessage.Channel, $".announce {e.ChatMessage.DisplayName} you can post this clip to NoobHunter by typing !clip noobhunter in chat.");
+                        TwitchChatClient.SendMessage(e.ChatMessage.Channel, $".announce {e.ChatMessage.DisplayName} you can submit this clip to NoobHunter for consideration by typing !clip noobhunter in chat.");
                     }
                     else
                     {
@@ -52,7 +52,7 @@ namespace BanHateBot
                 }
                 else
                 {
-                    TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Sorry {e.ChatMessage.Username}, only {e.ChatMessage.Channel}, Subscribers, VIPS, and Moderators can clip the stream from chat.");
+                    TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Sorry {e.ChatMessage.DisplayName}, only {e.ChatMessage.Channel}, Subscribers, VIPS, and Moderators can clip the stream from chat.");
                 }
             }
             catch (Exception ex)
@@ -96,7 +96,7 @@ namespace BanHateBot
             }
             else
             {
-                TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Sorry {e.ChatMessage.Username}, there are currently no clips you can post to NoobHunter, please use !clip and then try again.");
+                TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Sorry {e.ChatMessage.DisplayName}, there are currently no clips you can post to NoobHunter, please use !clip and then try again.");
             }
             if (url != string.Empty)
             {
@@ -104,11 +104,11 @@ namespace BanHateBot
                 if (result.success)
                 {
                     MostRecentClips.Remove(e.ChatMessage.Username);
-                    TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"{e.ChatMessage.Username}, your clip has been successfully posted to NoobHunter!");
+                    TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"{e.ChatMessage.DisplayName}, your clip has been successfully submitted to NoobHunter!");
                 }
                 else
                 {
-                    TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"An error occurred posting your clip to NoobHunter, you can try again, or just yell at Jeff to fix it.");
+                    TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"An error occurred submitting your clip to NoobHunter, you can try again, or just yell at Jeff to fix it.");
                 }
             }
         } 
