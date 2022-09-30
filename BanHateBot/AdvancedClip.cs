@@ -23,10 +23,10 @@ namespace BanHateBot
         public TwitchClient TwitchChatClient { get; set; }
         #endregion
         #region NoobHunterFormUrl
-        public string NoobHunterFormUrl { get; set; } = "https://docs.google.com/forms/d/e/1FAIpQLSeAy0TWyWvodfDTpZFaIICAE54XYHuACvPVbBDuiQg_VAu8vg/viewform";
+        public string NoobHunterFormUrl { get; set; } = "http://bit.ly/NHClips";
         #endregion
         #region MostRecentClips
-        public Dictionary<string, (string url, DateTime dateTime)> MostRecentClips { get; set; } = new Dictionary<string, (string url, DateTime dateTime)> { { "moonameisjeff", ("https://clips.twitch.tv/EsteemedQuaintMouseSoBayed-VdVYV6oaJRJV0h3L", DateTime.UtcNow) } }; 
+        public Dictionary<string, (string url, DateTime dateTime)> MostRecentClips { get; set; } = new Dictionary<string, (string url, DateTime dateTime)> (); 
         #endregion
 
         #region CreateTwitchClip
@@ -140,11 +140,13 @@ namespace BanHateBot
                 }
                 catch (Exception ex)
                 {
+                    Console.WriteLine(ex.ToString());
                     return (false, ex.Message);
                 }
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.ToString());
                 return (false, ex.Message);
             }
             finally
