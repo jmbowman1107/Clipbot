@@ -125,7 +125,7 @@ namespace BanHateBot
                 driver = new ChromeDriver(chromeOptions);
                 driver.Navigate().GoToUrl(NoobHunterFormUrl);
                 var firstQuestion = WaitAndFindElementByXpath(driver, "//div[contains(@data-params, 'Clip Link')]");
-                var firstQuestionInput = firstQuestion.FindElement(By.TagName("input"));
+                var firstQuestionInput = firstQuestion.FindElement(By.TagName("textarea"));
                 firstQuestionInput.SendKeys(url);
                 var secondQuestion = WaitAndFindElementByXpath(driver, "//div[contains(@data-params, 'Featured Name')]");
                 var secondQuestionInput = secondQuestion.FindElement(By.TagName("input"));
@@ -155,10 +155,12 @@ namespace BanHateBot
                 {
                     try
                     {
+                        Console.WriteLine("Closing Chrome Driver");
                         driver.Close();
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        Console.WriteLine(ex);
                         // Swallow
                     }
                 }
