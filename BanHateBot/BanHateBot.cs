@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TwitchLib.Api;
-using TwitchLib.Api.Core.Enums;
-using TwitchLib.Api.Helix.Models.Clips.CreateClip;
 using TwitchLib.Api.Helix.Models.Streams.CreateStreamMarker;
 using TwitchLib.Api.Helix.Models.Users.GetUserFollows;
 using TwitchLib.Client;
@@ -23,6 +20,7 @@ namespace BanHateBot
 {
     public class BanHateBot
     {
+        public StreamerSettings StreamerSettings { get; set; }
         private TwitchClient _twitchChatClient;
         private TwitchPubSub _twitchPubSubClient;
         private TwitchAPI _twitchApi;
@@ -30,12 +28,13 @@ namespace BanHateBot
         private Heist Heist { get; set; }
 
         #region Constructor
-        public BanHateBot()
+        public BanHateBot(StreamerSettings streamerSettings)
         {
+            StreamerSettings = streamerSettings;
             InitializePubSub();
             InitializeChat();
             InitializeTwitchApi();
-            _advancedClipper = new AdvancedClipper { StreamerName = "Vlyca", TwitchApi = _twitchApi, TwitchChatClient = _twitchChatClient };
+            _advancedClipper = new AdvancedClipper { StreamerSettings = StreamerSettings, TwitchApi = _twitchApi, TwitchChatClient = _twitchChatClient };
         } 
         #endregion
 
@@ -46,19 +45,17 @@ namespace BanHateBot
             string pagniation = null;
             //do
             //{
-            followers = await _twitchApi.Helix.Users.GetUsersFollowsAsync(first: 100, toId: "75230612", after: pagniation);
+            followers = await _twitchApi.Helix.Users.GetUsersFollowsAsync(first: 100, toId: StreamerSettings.StreamerId, after: pagniation);
             foreach (var follower in followers.Follows)
             {
                 Console.WriteLine(follower.FromUserName);
                 if (follower.FromUserName.Contains("hoss00312"))
                 {
                     Console.WriteLine($"Banning this MOFO {follower.FromUserName}");
-                    _twitchChatClient.BanUser("vlyca", follower.FromUserName, "We don't tolerate hate in this channel. Goodbye.");
+                    _twitchChatClient.BanUser(StreamerSettings.StreamerName.ToLower(), follower.FromUserName, "We don't tolerate hate in this channel. Goodbye.");
                 }
             }
             pagniation = followers.Pagination.Cursor;
-            //} while (followers.Pagination.Cursor != null);
-
         }
         #endregion
 
@@ -69,15 +66,14 @@ namespace BanHateBot
             _twitchPubSubClient.OnPubSubServiceConnected += PubSubClient_OnPubSubServiceConnected;
             _twitchPubSubClient.OnListenResponse += PubSubClient_OnListenResponse;
             _twitchPubSubClient.OnFollow += PubSubClient_OnFollow;
-            _twitchPubSubClient.ListenToFollows("75230612");
+            _twitchPubSubClient.ListenToFollows(StreamerSettings.StreamerId);
             _twitchPubSubClient.Connect();
         }
         #endregion
         #region InitializeChat
         private void InitializeChat()
         {
-            ConnectionCredentials credentials =
-                new ConnectionCredentials("", "");
+            ConnectionCredentials credentials = new ConnectionCredentials(StreamerSettings.StreamerBotName, StreamerSettings.StreamerBotOauthToken);
             var clientOptions = new ClientOptions
             {
                 MessagesAllowedInPeriod = 750,
@@ -85,7 +81,7 @@ namespace BanHateBot
             };
             WebSocketClient customClient = new WebSocketClient(clientOptions);
             _twitchChatClient = new TwitchClient(customClient);
-            _twitchChatClient.Initialize(credentials, "vlyca");
+            _twitchChatClient.Initialize(credentials, StreamerSettings.StreamerName.ToLower());
 
             _twitchChatClient.OnLog += ChatClient_OnLog;
             _twitchChatClient.OnJoinedChannel += ChatClient_OnJoinedChannel;
@@ -95,11 +91,9 @@ namespace BanHateBot
             _twitchChatClient.Connect();
         }
 
-
-
         #endregion
         #region InitializeTwitchApi
-        private async void InitializeTwitchApi()
+        private void InitializeTwitchApi()
         {
             _twitchApi = new TwitchAPI();
             _twitchApi.Settings.ClientId = "";
@@ -110,7 +104,7 @@ namespace BanHateBot
         #region ChatClient_OnLog
         private void ChatClient_OnLog(object sender, OnLogArgs e)
         {
-            Console.WriteLine($"{e.DateTime.ToString()}: {e.BotUsername} - {e.Data}");
+            //Console.WriteLine($"{e.DateTime.ToString()}: {e.BotUsername} - {e.Data}");
         }
         #endregion
         #region ChatClient_OnDisconnected
@@ -136,110 +130,130 @@ namespace BanHateBot
         private void ChatClient_OnJoinedChannel(object sender, OnJoinedChannelArgs e)
         {
             Console.WriteLine("Hey guys! I am a bot connected via TwitchLib!");
-            //_twitchChatClient.SendMessage(e.Channel, "Hey guys! I am and sitting and ready to ban all the hoss.");
-            Heist = new Heist(_twitchChatClient, e.Channel);
+            _twitchChatClient.SendMessage(e.Channel, "Hey guys! I am and sitting and ready to ban all the hoss.");
+            if (StreamerSettings.BotFeatures.Contains(BotFeatures.Heist)) 
+            {
+                Heist = new Heist(StreamerSettings, _twitchChatClient);
+            }
         }
         #endregion
         #region ChatClient_OnMessageReceived
         private void ChatClient_OnMessageReceived(object sender, OnMessageReceivedArgs e)
         {
-            if (e.ChatMessage.Username.Contains("hoss00312") || e.ChatMessage.Username.Contains("idwt_"))
-                _twitchChatClient.BanUser(e.ChatMessage.Channel, e.ChatMessage.Username, "We don't tolerate hate in this channel. Goodbye.");
-
-            if (e.ChatMessage.Message.ToLower().Contains("buy followers"))
+            if (StreamerSettings.BotFeatures.Contains(BotFeatures.BanHate))
             {
-                var test = _twitchApi.Helix.Users.GetUsersFollowsAsync(fromId: e.ChatMessage.UserId, toId: "75230612").Result;
-                if (test.Follows != null && !test.Follows.Any())
+                if (e.ChatMessage.Username.Contains("hoss00312") || e.ChatMessage.Username.Contains("idwt_"))
+                    _twitchChatClient.BanUser(e.ChatMessage.Channel, e.ChatMessage.Username, "We don't tolerate hate in this channel. Goodbye.");
+
+                if (e.ChatMessage.Message.ToLower().Contains("buy followers"))
                 {
-                    _twitchChatClient.BanUser(e.ChatMessage.Channel, e.ChatMessage.Username, "We don't want what you are selling.. go away.");
+                    var test = _twitchApi.Helix.Users.GetUsersFollowsAsync(fromId: e.ChatMessage.UserId, toId: StreamerSettings.StreamerId).Result;
+                    if (test.Follows != null && !test.Follows.Any())
+                    {
+                        _twitchChatClient.BanUser(e.ChatMessage.Channel, e.ChatMessage.Username, "We don't want what you are selling.. go away.");
+                    }
                 }
             }
 
-            #region Heist Number
-            var isHeistMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist \d+$");
-            if (isHeistMessage.Captures.Count > 0)
+            if (StreamerSettings.BotFeatures.Contains(BotFeatures.Heist))
             {
-                var number = Regex.Match(e.ChatMessage.Message, @"\d+$");
-                if (number.Captures.Count > 0)
+                #region Heist Number
+                var isHeistMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist \d+$");
+                if (isHeistMessage.Captures.Count > 0)
                 {
-                    Heist.JoinHeist(e.ChatMessage.DisplayName, false, Convert.ToInt32(number.Captures[0].Value)).Wait();
+                    var number = Regex.Match(e.ChatMessage.Message, @"\d+$");
+                    if (number.Captures.Count > 0)
+                    {
+                        Heist.JoinHeist(e.ChatMessage.DisplayName, false, Convert.ToInt32(number.Captures[0].Value)).Wait();
+                    }
                 }
-            } 
-            #endregion
+                #endregion
 
-            #region Heist All
-            var isHeistAllMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist all$");
-            if (isHeistAllMessage.Captures.Count > 0)
-            {
-                Heist.JoinHeist(e.ChatMessage.DisplayName, true).Wait();
-            } 
-            #endregion
-
-            #region Heist Cancel
-            var isHeistCancelMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist cancel$");
-            if (isHeistCancelMessage.Captures.Count > 0)
-            {
-                if (e.ChatMessage.IsBroadcaster || e.ChatMessage.IsModerator)
+                #region Heist All
+                var isHeistAllMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist all$");
+                if (isHeistAllMessage.Captures.Count > 0)
                 {
-                    Heist.EndHeist(true).Wait();
+                    Heist.JoinHeist(e.ChatMessage.DisplayName, true).Wait();
                 }
-            }
-            #endregion
+                #endregion
 
-            #region Heist Reset Me
-            var isHeistResetMeMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist undo$");
-            if (isHeistResetMeMessage.Captures.Count > 0)
-            {
-                Heist.JoinHeist(e.ChatMessage.DisplayName, false, null, true).Wait();
-            }
-            #endregion
-
-            #region Heist Rez
-            var isHeistRezMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!rez \S+$");
-            if (isHeistRezMessage.Captures.Count > 0)
-            {
-                var personToRez = e.ChatMessage.Message.Replace("!rez ", string.Empty);
-                if (personToRez.StartsWith("@"))
+                #region Heist Cancel
+                var isHeistCancelMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist cancel$");
+                if (isHeistCancelMessage.Captures.Count > 0)
                 {
-                    personToRez = personToRez.Remove(0, 1);
+                    if (e.ChatMessage.IsBroadcaster || e.ChatMessage.IsModerator)
+                    {
+                        Heist.EndHeist(true).Wait();
+                    }
                 }
-                Heist.RezUser(e.ChatMessage.DisplayName, personToRez).Wait();
-            }
-            #endregion
+                #endregion
 
-            #region Mark
-            var isMarkMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!mark$");
-            if (isMarkMessage.Captures.Count > 0)
-            {
-                MarkStream(e);
-            }
-            #endregion
-
-            #region Mark Message
-            var isMarkWithMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!mark .*$");
-            if (isMarkWithMessage.Captures.Count > 0)
-            {
-                var markDescription = Regex.Match(e.ChatMessage.Message.ToLower(), @" .*$");
-                if (markDescription.Captures.Count > 0)
+                #region Heist Reset Me
+                var isHeistResetMeMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!heist undo$");
+                if (isHeistResetMeMessage.Captures.Count > 0)
                 {
-                    MarkStream(e, markDescription.Captures[0].Value.Trim());
+                    Heist.JoinHeist(e.ChatMessage.DisplayName, false, null, true).Wait();
                 }
-            }
-            #endregion
+                #endregion
 
-            #region Clip
-            var isClipMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!clip$");
-            if (isClipMessage.Captures.Count > 0)
-            {
-                _advancedClipper.CreateTwitchClip(e);
-            } 
-
-            var isPostNoobHunter = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!clip noobhunter$");
-            if (isPostNoobHunter.Captures.Count >0)
-            {
-                _advancedClipper.ValidateAndPostToNoobHuner(e);
+                #region Heist Rez
+                var isHeistRezMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!rez \S+$");
+                if (isHeistRezMessage.Captures.Count > 0)
+                {
+                    var personToRez = e.ChatMessage.Message.Replace("!rez ", string.Empty);
+                    if (personToRez.StartsWith("@"))
+                    {
+                        personToRez = personToRez.Remove(0, 1);
+                    }
+                    Heist.RezUser(e.ChatMessage.DisplayName, personToRez).Wait();
+                }
+                #endregion
             }
-            #endregion
+
+            if (StreamerSettings.BotFeatures.Contains(BotFeatures.Mark))
+            {
+                #region Mark
+                var isMarkMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!mark$");
+                if (isMarkMessage.Captures.Count > 0)
+                {
+                    MarkStream(e);
+                }
+                #endregion
+
+                #region Mark Message
+                var isMarkWithMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!mark .*$");
+                if (isMarkWithMessage.Captures.Count > 0)
+                {
+                    var markDescription = Regex.Match(e.ChatMessage.Message.ToLower(), @" .*$");
+                    if (markDescription.Captures.Count > 0)
+                    {
+                        MarkStream(e, markDescription.Captures[0].Value.Trim());
+                    }
+                }
+                #endregion
+            }
+
+            if (StreamerSettings.BotFeatures.Contains(BotFeatures.Clip))
+            {
+                #region Clip
+                var isClipMessage = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!clip$");
+                if (isClipMessage.Captures.Count > 0)
+                {
+                    _advancedClipper.CreateTwitchClip(e, StreamerSettings.BotFeatures.Contains(BotFeatures.AdvancedClip));
+                }
+                #endregion
+            }
+
+            if (StreamerSettings.BotFeatures.Contains(BotFeatures.AdvancedClip))
+            {
+                #region Clip Noobhunter
+                var isPostNoobHunter = Regex.Match(e.ChatMessage.Message.ToLower(), @"^!clip noobhunter$");
+                if (isPostNoobHunter.Captures.Count > 0)
+                {
+                    _advancedClipper.ValidateAndPostToNoobHuner(e);
+                }
+                #endregion
+            }
         }
         #endregion
 
@@ -253,8 +267,11 @@ namespace BanHateBot
         #region PubSubClient_OnFollow
         private void PubSubClient_OnFollow(object sender, OnFollowArgs e)
         {
-            if (e.Username.Contains("hoss00312") || e.Username.Contains("h0ss00312") || e.Username.Contains("moomoo4you") || e.Username.Contains("idwt_"))
-                _twitchChatClient.BanUser("vlyca", e.Username, "We don't tolerate hate in this channel. Goodbye.");
+            if (StreamerSettings.BotFeatures.Contains(BotFeatures.BanHate))
+            {
+                if (e.Username.Contains("hoss00312") || e.Username.Contains("h0ss00312") || e.Username.Contains("moomoo4you") || e.Username.Contains("idwt_"))
+                    _twitchChatClient.BanUser(StreamerSettings.StreamerName.ToLower(), e.Username, "We don't tolerate hate in this channel. Goodbye.");
+            }
         }
         #endregion
         #region PubSubClient_OnListenResponse
@@ -272,7 +289,7 @@ namespace BanHateBot
             {
                 if (e.ChatMessage.IsVip || e.ChatMessage.IsModerator || e.ChatMessage.IsBroadcaster)
                 {
-                    var mark = _twitchApi.Helix.Streams.CreateStreamMarkerAsync(new CreateStreamMarkerRequest { Description = markMessage, UserId = "75230612" }).Result;
+                    var mark = _twitchApi.Helix.Streams.CreateStreamMarkerAsync(new CreateStreamMarkerRequest { Description = markMessage, UserId = StreamerSettings.StreamerId }).Result;
                     if (markMessage != "Marked from bot.")
                     {
                         _twitchChatClient.SendMessage(e.ChatMessage.Channel, $"Stream successfully marked with description: \"{markMessage}\"");

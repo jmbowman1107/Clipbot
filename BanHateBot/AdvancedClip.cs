@@ -13,8 +13,8 @@ namespace BanHateBot
 {
     public class AdvancedClipper
     {
-        #region StreamerName
-        public string StreamerName { get; set; }
+        #region StreamerSettings
+        public StreamerSettings StreamerSettings { get; set; }
         #endregion
         #region TwitchApi
         public TwitchAPI TwitchApi { get; set; }
@@ -30,20 +30,21 @@ namespace BanHateBot
         #endregion
 
         #region CreateTwitchClip
-        public void CreateTwitchClip(OnMessageReceivedArgs e)
+        public void CreateTwitchClip(OnMessageReceivedArgs e, bool canPerformAdvancedClip)
         {
             CreatedClipResponse clip = null;
             try
             {
                 if (e.ChatMessage.IsVip || e.ChatMessage.IsModerator || e.ChatMessage.IsBroadcaster || e.ChatMessage.IsSubscriber)
                 {
-                    clip = TwitchApi.Helix.Clips.CreateClipAsync("75230612").Result;
+                    clip = TwitchApi.Helix.Clips.CreateClipAsync(StreamerSettings.StreamerId).Result;
 
                     if (clip != null && clip.CreatedClips.Any())
                     {
                         TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Clip created successfully {clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty)}");
                         MostRecentClips[e.ChatMessage.Username] = (clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty), DateTime.UtcNow);
-                        TwitchChatClient.SendMessage(e.ChatMessage.Channel, $".announce {e.ChatMessage.DisplayName} you can submit this clip to NoobHunter for consideration by typing !clip noobhunter in chat.");
+                        if (canPerformAdvancedClip) TwitchChatClient.SendMessage(e.ChatMessage.Channel, $".announce {e.ChatMessage.DisplayName} you can submit this clip to NoobHunter for consideration by typing !clip noobhunter in chat.");
+
                     }
                     else
                     {
@@ -64,7 +65,7 @@ namespace BanHateBot
                         TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Stream successfully clipped: ");
                         TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Clip created successfully {clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty)}");
                         MostRecentClips[e.ChatMessage.Username] = (clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty), DateTime.UtcNow);
-                        TwitchChatClient.SendMessage(e.ChatMessage.Channel, $".announce {e.ChatMessage.Username} you can send this clip to NoobHunter for consideration by typing '!clip noobhunter' in chat.");
+                        if (canPerformAdvancedClip) TwitchChatClient.SendMessage(e.ChatMessage.Channel, $".announce {e.ChatMessage.DisplayName} you can submit this clip to NoobHunter for consideration by typing !clip noobhunter in chat.");
                     }
                     else
                     {

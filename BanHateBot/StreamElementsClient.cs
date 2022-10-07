@@ -10,10 +10,10 @@ namespace BanHateBot
     public class StreamElementsClient
     {
         #region ChannelId
-        public string ChannelId { get; set; } = ""; 
+        public string ChannelId { get; set; }
         #endregion
         #region JwtTokenString
-        public string JwtTokenString { get; set; } = ""; 
+        public string JwtTokenString { get; set; }
         #endregion
         #region HttpClient
         protected HttpClient HttpClient
@@ -38,7 +38,7 @@ namespace BanHateBot
             }
             catch
             {
-                // TODO:
+                // TODO: What to do here..
                 return null;
             }
         }
