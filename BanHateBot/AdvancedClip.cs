@@ -37,6 +37,12 @@ namespace BanHateBot
             {
                 if (e.ChatMessage.IsVip || e.ChatMessage.IsModerator || e.ChatMessage.IsBroadcaster || e.ChatMessage.IsSubscriber)
                 {
+                    var isLive = TwitchApi.Helix.Streams.GetStreamsAsync(userIds: new List<string> { StreamerSettings.StreamerId }).Result;
+                    if (!isLive.Streams.Any())
+                    {
+                        TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Cannot create clip for an offline stream.");
+                        return;
+                    }
                     clip = TwitchApi.Helix.Clips.CreateClipAsync(StreamerSettings.StreamerId).Result;
 
                     if (clip != null && clip.CreatedClips.Any())
