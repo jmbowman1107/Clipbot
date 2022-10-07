@@ -130,7 +130,7 @@ namespace BanHateBot
                 firstQuestionInput.SendKeys(url);
                 var secondQuestion = WaitAndFindElementByXpath(driver, "//div[contains(@data-params, 'Featured Name')]");
                 var secondQuestionInput = secondQuestion.FindElement(By.TagName("input"));
-                secondQuestionInput.SendKeys(StreamerName);
+                secondQuestionInput.SendKeys(StreamerSettings.StreamerName);
                 var submitButton = WaitAndFindElementByXpath(driver, "//span[text()='Submit']");
                 submitButton.Click();
 
