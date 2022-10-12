@@ -49,7 +49,7 @@ namespace BanHateBot
                     {
                         TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"Clip created successfully {clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty)}");
                         MostRecentClips[e.ChatMessage.Username] = (clip.CreatedClips[0].EditUrl.Replace("/edit", string.Empty), DateTime.UtcNow);
-                        if (canPerformAdvancedClip) TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"{e.ChatMessage.DisplayName} you can submit this clip to NoobHunter for consideration by typing !clip noobhunter in chat.");
+                        if (canPerformAdvancedClip) TwitchChatClient.SendMessage(e.ChatMessage.Channel, $"{e.ChatMessage.DisplayName} you can submit this clip to NoobHunter for consideration by typing \"!clip noobhunter\" in chat.");
 
                     }
                     else
