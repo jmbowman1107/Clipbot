@@ -7,16 +7,16 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
-COPY ["BanHateBotWeb/BanHateBotWeb.csproj", "BanHateBotWeb/"]
-RUN dotnet restore "BanHateBotWeb/BanHateBotWeb.csproj"
+COPY ["JeffBotWeb/JeffBotWeb.csproj", "JeffBotWeb/"]
+RUN dotnet restore "JeffBotWeb/JeffBotWeb.csproj"
 COPY . .
-WORKDIR "/src/BanHateBotWeb"
-RUN dotnet build "BanHateBotWeb.csproj" -c Release -o /app/build
+WORKDIR "/src/JeffBotWeb"
+RUN dotnet build "JeffBotWeb.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "BanHateBotWeb.csproj" -c Release -o /app/publish
+RUN dotnet publish "JeffBotWeb.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "BanHateBotWeb.dll"]
+ENTRYPOINT ["dotnet", "JeffBotWeb.dll"]

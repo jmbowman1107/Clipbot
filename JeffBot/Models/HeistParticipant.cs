@@ -1,4 +1,4 @@
-﻿namespace BanHateBot.Models
+﻿namespace JeffBot
 {
     public class HeistParticipant
     {

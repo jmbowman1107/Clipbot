@@ -1,4 +1,4 @@
-﻿namespace BanHateBot
+﻿namespace JeffBot
 {
     public class HeistSettings
     {

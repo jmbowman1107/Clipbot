@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30907.101
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33103.184
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Clipbot", "Clipbot\Clipbot.csproj", "{1636082E-B2E3-400D-A368-9C1CE9E89A71}"
 EndProject
@@ -9,9 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClipbotLambda", "Clipbot La
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClipbotLambda.Tests", "Clipbot Lambda.Tests\ClipbotLambda.Tests.csproj", "{028DB524-6278-4A66-AA13-7150BC810243}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BanHateBot", "BanHateBot\BanHateBot.csproj", "{A42479EC-FFB3-4859-B086-EB646170BDCA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JeffBot", "JeffBot\JeffBot.csproj", "{A42479EC-FFB3-4859-B086-EB646170BDCA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BanHateBotWeb", "BanHateBotWeb\BanHateBotWeb.csproj", "{A670A465-F549-454D-B8DF-C3DB90F5FA35}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JeffBotWeb", "JeffBotWeb\JeffBotWeb.csproj", "{A670A465-F549-454D-B8DF-C3DB90F5FA35}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -4,10 +4,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using BanHateBot.Models;
 using TwitchLib.Client;
 
-namespace BanHateBot
+namespace JeffBot
 {
     public class Heist
     {

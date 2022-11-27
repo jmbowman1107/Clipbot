@@ -16,9 +16,9 @@ using TwitchLib.PubSub;
 using TwitchLib.PubSub.Events;
 using OnLogArgs = TwitchLib.Client.Events.OnLogArgs;
 
-namespace BanHateBot
+namespace JeffBot
 {
-    public class BanHateBot
+    public class JeffBot
     {
         public StreamerSettings StreamerSettings { get; set; }
         private TwitchClient _twitchChatClient;
@@ -28,7 +28,7 @@ namespace BanHateBot
         private Heist Heist { get; set; }
 
         #region Constructor
-        public BanHateBot(StreamerSettings streamerSettings)
+        public JeffBot(StreamerSettings streamerSettings)
         {
             StreamerSettings = streamerSettings;
             InitializePubSub();
@@ -96,9 +96,11 @@ namespace BanHateBot
         private void InitializeTwitchApi()
         {
             _twitchApi = new TwitchAPI();
-            _twitchApi.Settings.ClientId = "";
-            //_twitchApi.Settings.AccessToken = "";
-            _twitchApi.Settings.AccessToken = "";
+
+            throw new NotImplementedException("Enter your Twitch API Client ID and Access Token below.")
+
+            //_twitchApi.Settings.ClientId = "YOUR_TWITCH_API_CLIENT_ID";
+            //_twitchApi.Settings.AccessToken = "YOUR_TWITCH_API_ACCESS_TOKEN";
         }
         #endregion
         #region ChatClient_OnLog
@@ -130,7 +132,7 @@ namespace BanHateBot
         private void ChatClient_OnJoinedChannel(object sender, OnJoinedChannelArgs e)
         {
             Console.WriteLine("Hey guys! I am a bot connected via TwitchLib!");
-            _twitchChatClient.SendMessage(e.Channel, "Hey guys! I am and sitting and ready to ban all the hoss.");
+            //_twitchChatClient.SendMessage(e.Channel, "Hey guys! I am and sitting and ready to ban all the hoss.");
             if (StreamerSettings.BotFeatures.Contains(BotFeatures.Heist)) 
             {
                 Heist = new Heist(StreamerSettings, _twitchChatClient);
@@ -261,7 +263,8 @@ namespace BanHateBot
         private void PubSubClient_OnPubSubServiceConnected(object sender, EventArgs e)
         {
             // SendTopics accepts an oauth optionally, which is necessary for some topics
-            _twitchPubSubClient.SendTopics("oauth:ie4qryq4oeo45jflmg53dzpikmzqat");
+            //_twitchPubSubClient.SendTopics("YOUR_OAUTH_TOKEN_FOR_BEING_ABLE_TO_MARK_STREAMS");
+
         }
         #endregion
         #region PubSubClient_OnFollow
@@ -269,7 +272,7 @@ namespace BanHateBot
         {
             if (StreamerSettings.BotFeatures.Contains(BotFeatures.BanHate))
             {
-                if (e.Username.Contains("hoss00312") || e.Username.Contains("h0ss00312") || e.Username.Contains("moomoo4you") || e.Username.Contains("idwt_"))
+                if (e.Username.ToLower().Contains("hoss00312") || e.Username.ToLower().Contains("h0ss00312") || e.Username.Contains("idwt_"))
                     _twitchChatClient.BanUser(StreamerSettings.StreamerName.ToLower(), e.Username, "We don't tolerate hate in this channel. Goodbye.");
             }
         }

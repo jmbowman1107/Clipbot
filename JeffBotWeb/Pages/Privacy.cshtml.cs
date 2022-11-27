@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace BanHateBotWeb.Pages
+namespace JeffBotWeb.Pages
 {
     public class PrivacyModel : PageModel
     {

@@ -1,19 +1,24 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using JeffBot;
 
-namespace BanHateBotWeb
+namespace JeffBotWeb
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static List<JeffBot.StreamerSettings> StreamerSettings => new List<StreamerSettings> 
+        { 
+            // TODO: Add your streamers settings here
+        };
+        
+        public static void Main(string[] args) 
         {
-            var runMe = new BanHateBot.BanHateBot();
+            foreach (var streamer in StreamerSettings)
+            {
+                var runMe = new JeffBot.JeffBot(streamer);
+            }
+
             CreateHostBuilder(args).Build().Run();
         }
 

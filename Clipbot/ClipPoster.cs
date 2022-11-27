@@ -29,8 +29,10 @@ namespace Clipbot
             _logger = logger;
             _cachedClips = new List<Clip>();
             TwitchApi = new TwitchAPI();
-            TwitchApi.Settings.ClientId = "5j1aae4x7qqx17shppz7tc2g9rd6fw";
-            TwitchApi.Settings.Secret = "ubx843ckzgxlzwt1558wlicsf6yuir";
+
+            throw new NotImplementedException("ADd your twitch client ID and access token below");
+            //_twitchApi.Settings.ClientId = "YOUR_TWITCH_API_CLIENT_ID";
+            //_twitchApi.Settings.AccessToken = "YOUR_TWITCH_API_ACCESS_TOKEN";
         }
         #endregion
 

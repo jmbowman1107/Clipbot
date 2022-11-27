@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace BanHateBot.Models
+namespace JeffBot
 {
     public class StreamElementsUser
     {

@@ -2,10 +2,9 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using BanHateBot.Models;
 using Newtonsoft.Json;
 
-namespace BanHateBot
+namespace JeffBot
 {
     public class StreamElementsClient
     {

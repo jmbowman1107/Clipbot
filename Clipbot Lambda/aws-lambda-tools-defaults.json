@@ -6,7 +6,7 @@
         "dotnet lambda help",
         "All the command line options for the Lambda command can be specified in this file."
     ],
-    "profile"     : "default",
+    "profile"     : "jeff-personal",
     "region"      : "us-east-1",
     "configuration" : "Release",
     "framework"     : "netcoreapp3.1",
@@ -20,5 +20,8 @@
     "function-role"        : "arn:aws:iam::410649996166:role/lambda_exec_VlycaTwitchClipbot",
     "tracing-mode"         : "PassThrough",
     "environment-variables" : "",
-    "image-tag"             : ""
+    "image-tag"             : "",
+    "function-architecture" : "x86_64",
+    "function-subnets"      : "",
+    "function-security-groups" : ""
 }

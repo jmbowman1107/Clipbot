@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace BanHateBot
+namespace JeffBot
 {
     public class StreamerSettings
     {
